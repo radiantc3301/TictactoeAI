@@ -2,6 +2,7 @@ import pygame
 import threading
 
 neg_inf = float('-inf')
+pos_inf = float('inf')
 # Initialize Pygame
 pygame.init()
 
@@ -55,26 +56,57 @@ def winning_condition(button_states):
     return None
 
 ai = 'O'
+human = 'X'
 
-def minimax():
-    return 1
+scores = {
+    'X': -1,
+    'O': +1,
+    'draw': 0
+}
+
+def minimax(button_states, depth, maximizingPlayer):
+    result = winning_condition(button_states)
+    if result is not None:
+        return scores[result]
+    
+    if all(x is not None for x in button_states):
+        return scores['draw']
+
+    if maximizingPlayer:
+        bestScore = neg_inf
+        for i in range(9):
+            if button_states[i] is None:
+                button_states[i] = ai
+                score = minimax(button_states, depth + 1, False)
+                button_states[i] = None
+                bestScore = max(score, bestScore)
+        return bestScore
+    else:
+        bestScore = pos_inf
+        for i in range(9):
+            if button_states[i] is None:
+                button_states[i] = human
+                score = minimax(button_states, depth + 1, True)
+                button_states[i] = None
+                bestScore = min(score, bestScore)
+        return bestScore
 
 def bestMove():
     bestScore = neg_inf
-    move = None  # Initialize move to None
+    move = None
     for i in range(9):
         if button_states[i] is None:
             button_states[i] = ai
-            score = minimax()
+            score = minimax(button_states, 0, False)
             button_states[i] = None
+            print(f"Move: {i}, Score: {score}")  # Debugging output for each move and its score
             if score > bestScore:
                 bestScore = score
                 move = i
-    if move is not None:  # Only update the state and print if a move was found
-        print(move)
+    if move is not None:
         button_states[move] = ai
-    else:
-        print("No valid move found")
+        print(f"AI chooses position {move} with score {bestScore}")  # Debugging output for the chosen move
+
 
 # Game loop
 running = True
@@ -88,46 +120,49 @@ while running:
             for i, button_rect in enumerate(button_rects):
                 if button_rect.collidepoint(event.pos) and button_states[i] is None:
                     # Update the state of the button based on whose turn it is
-                    if count % 2 == 1:
-                        button_states[i] = 'O'
-                    else:
+                    if count % 2 == 0:
                         button_states[i] = 'X'
-                    # Increment the turn counter
-                    count += 1
-            if count % 2 != 0:
-                threading.Timer(0.5, bestMove).start()
-                count += 1
+                        count += 1
+                        winner = winning_condition(button_states)
+                        if winner is not None:
+                            break
+                        if count % 2 != 0 and running:
+                            bestMove()
+                            count += 1
+                            winner = winning_condition(button_states)
+                            if winner is not None:
+                                break
 
-    # Fill the screen with a color
-    screen.fill((0, 0, 0))
+        # Fill the screen with a color
+        screen.fill((0, 0, 0))
 
-    # Draw the grid lines
-    pygame.draw.line(screen, (255, 255, 255), (325, 100), (325, 500), 5)
-    pygame.draw.line(screen, (255, 255, 255), (475, 100), (475, 500), 5)
-    pygame.draw.line(screen, (255, 255, 255), (200, 225), (600, 225), 5)
-    pygame.draw.line(screen, (255, 255, 255), (200, 375), (600, 375), 5)
+        # Draw the grid lines
+        pygame.draw.line(screen, (255, 255, 255), (325, 100), (325, 500), 5)
+        pygame.draw.line(screen, (255, 255, 255), (475, 100), (475, 500), 5)
+        pygame.draw.line(screen, (255, 255, 255), (200, 225), (600, 225), 5)
+        pygame.draw.line(screen, (255, 255, 255), (200, 375), (600, 375), 5)
 
-    # Draw the buttons and images
-    for i, button_rect in enumerate(button_rects):
-        if button_states[i] == 'X':
-            screen.blit(image_x, button_rect)
-        elif button_states[i] == 'O':
-            screen.blit(image_o, button_rect)
-        else:
-            pygame.draw.rect(screen, (0, 0, 0), button_rect)
+        # Draw the buttons and images
+        for i, button_rect in enumerate(button_rects):
+            if button_states[i] == 'X':
+                screen.blit(image_x, button_rect)
+            elif button_states[i] == 'O':
+                screen.blit(image_o, button_rect)
+            else:
+                pygame.draw.rect(screen, (0, 0, 0), button_rect)
 
-    # Update the display
-    pygame.display.flip()
+        # Update the display
+        pygame.display.flip()
 
-    # Check for a winning condition
-    winner = winning_condition(button_states)
-    if winner is not None:
-        print(f"Player {winner} wins!")
-        running = False
-    
-    if count == 9:
-        print("It's a tie!")
-        running = False
+        # Check for a winning condition
+        winner = winning_condition(button_states)
+        if winner is not None:
+            print(f"Player {winner} wins!")
+            running = False
+        if count == 10:
+            print("It's a tie!")
+            running = False
+
 
 # Quit Pygame
 pygame.quit()
